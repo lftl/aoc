@@ -1,5 +1,6 @@
 import datetime
 import requests
+import os
 
 def fetch_input(day, session, year=None):
 
@@ -7,14 +8,25 @@ def fetch_input(day, session, year=None):
         year = datetime.datetime.now().year
 
     url = f"https://adventofcode.com/{year}/day/{day}/input"
-    print(url)
 
     response = requests.get(url, cookies={'session': session})
     return response
 
-def save_input(day, session, year=None):
-    response = fetch_input(day, session, year)
-    output = open(f"day{day}/input", 'w')
-    output.write(response.text)
+def save_input(path, contents):
+    output = open(path, 'w')
+    output.write(contents)
     output.close()
     
+def load_input(day, session, year=None, force_reload=False):
+    response = fetch_input(day, session, year)
+    output_path = f"day{day}/input"
+
+    if not os.path.exists(output_path) or force_reload:
+        response = fetch_input(day, session, year)
+        contents = response.text
+        output = save_input(output_path, contents)
+    else:
+        input_file = open(output_path)
+        contents = input_file.read()
+
+    return contents
