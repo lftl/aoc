@@ -9,6 +9,8 @@ name = "pypi"
 requests = "*"
 ipython = "*"
 shapely = "*"
+defaultlist = "*"
+readchar = "*"
 
 [requires]
 python_version = "3.7"

@@ -30,3 +30,20 @@ def load_input(day, session, year=None, force_reload=False):
         contents = input_file.read()
 
     return contents
+
+
+def get_adjacents(pt):
+    return (
+        (pt[0]+1, pt[1]),
+        (pt[0]-1, pt[1]),
+        (pt[0], pt[1]+1),
+        (pt[0], pt[1]-1)
+    )
+
+
+def vector_add(pt1, pt2):
+    return (pt1[0] + pt2[0], pt1[1] + pt2[1])
+
+
+def vector_sub(pt1, pt2):
+    return (pt1[0] - pt2[0], pt1[1] - pt2[1])
