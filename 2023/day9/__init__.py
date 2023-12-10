@@ -106,7 +106,16 @@ def extrapolate_prev_value(history):
 
 
 def solve(data=None):
-
+    """
+    >>> solve(spec1)
+    18
+    >>> solve(spec2)
+    28
+    >>> solve(spec3)
+    68
+    >>> solve(spec4)
+    114
+    """
     if data is None:
         data = common.load_input(9)
     data = data.splitlines()
@@ -119,6 +128,16 @@ def solve(data=None):
     return total
 
 def solve2(data=None):
+    """
+    >>> solve2(spec1)
+    -3
+    >>> solve2(spec2)
+    0
+    >>> solve2(spec3)
+    5
+    >>> solve2(spec4)
+    2
+    """
 
     if data is None:
         data = common.load_input(9)
