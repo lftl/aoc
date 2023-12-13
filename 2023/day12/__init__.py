@@ -75,6 +75,7 @@ Adding all of the possible arrangement counts together produces a total of 21 ar
 For each row, count all of the different arrangements of operational and broken springs that meet the given criteria. What is the sum of those counts?
 """
 
+from collections import defaultdict
 import time
 import common
 
@@ -116,47 +117,47 @@ def count_contiguous_groups(springs):
                 count = 0
     return groups
 
-    
 
-def expand_springs(possibilities, current_possibility, springs, groups):
+def expand_springs(possibilities, current_possibility, springs, groups, cull=True):
     if len(springs) == 0:
         possibilities.append(current_possibility)
         return possibilities
 
     char = springs[0]
 
-    count = ''
-    if char != '?':
-        count = count_contiguous_groups(current_possibility + char)
+    if cull:
+        count = ''
+        if char != '?':
+            count = count_contiguous_groups(current_possibility + char)
 
-    if char == '.':
-        if count != groups[:len(count)]:
-            return possibilities
-    elif char == '#':
-        if len(count) > len(groups):
-            return possibilities
-        if len(count) > 1:
-
-            if count[:-1] != groups[:len(count)-1]:
+        if char == '.':
+            if count != groups[:len(count)]:
                 return possibilities
-
-            offset = 0
-            while offset+1 < len(springs) and springs[offset+1] == '#':
-                offset += 1
-
-            current_count = count[-1]
-
-            if current_count + offset > groups[len(count)-1]:
+        elif char == '#':
+            if len(count) > len(groups):
                 return possibilities
+            if len(count) > 1:
 
-    # print(current_possibility, springs, groups, count)
+                if count[:-1] != groups[:len(count)-1]:
+                    return possibilities
+
+                offset = 0
+                while offset+1 < len(springs) and springs[offset+1] == '#':
+                    offset += 1
+
+                current_count = count[-1]
+
+                if current_count + offset > groups[len(count)-1]:
+                    return possibilities
+
+        # print(current_possibility, springs, groups, count)
 
     if char == '?':
-        possibilities = expand_springs(possibilities, current_possibility + '.', springs[1:], groups)
-        possibilities = expand_springs(possibilities, current_possibility + '#', springs[1:], groups)
+        possibilities = expand_springs(possibilities, current_possibility + '.', springs[1:], groups, cull)
+        possibilities = expand_springs(possibilities, current_possibility + '#', springs[1:], groups, cull)
         return possibilities
     else:
-        return expand_springs(possibilities, current_possibility + char, springs[1:], groups)
+        return expand_springs(possibilities, current_possibility + char, springs[1:], groups, cull)
 
 def solve(data=None):
     if data is None:
@@ -166,28 +167,88 @@ def solve(data=None):
     total_arrangements = sum(count_arrangements(row) for row in data)
     return total_arrangements
 
+def expand_group(group, singles, init_groups):
+    expanded = defaultdict(int)
+    for count, last_char_hash in group:
+        num_in_group = group[(count, last_char_hash)]
+        for count2 in singles:
+            for single2 in singles[count2]:
+                if not last_char_hash or single2[0] == '.' or len(count) == 0 or len(count2) == 0:
+                    new_count = count + count2
+                else:
+                    new_count = count[:-1] + (count[-1] + count2[0],) + count2[1:]
+
+                if single2[-1] == '#' and list(new_count[:-1]) == init_groups[0:len(new_count)-1]:
+                    expanded[(tuple(new_count), single2[-1] == '#')] += num_in_group
+                elif list(new_count) == init_groups[0:len(new_count)]:
+                    expanded[(tuple(new_count), single2[-1] == '#')] += num_in_group
+
+    return expanded
+
+
 def solve2(data=None):
     if data is None:
         data = common.load_input(12)
     data = data.splitlines()
 
-    count = 0
+    total = 0
+    i = 0
     for row in data:
         init_springs, init_groups = row.split()
-        springs = ''
-        groups = ''
-        for i in range(5):
-            springs += init_springs + '?'
-            groups += init_groups + ','
+        init_groups = list(map(int, init_groups.split(',')))
+        full_groups = init_groups * 5
+        terminators = defaultdict(list)
+        springs = expand_springs([], '', init_springs, full_groups, cull=False)
+        for spring in springs:
+            count = tuple(count_contiguous_groups(spring))
 
-        springs = springs[:-1]
-        groups = groups[:-1]
-        row = springs + ' ' + groups
+            if len(count) > 0 and max(count) > max(full_groups):
+                continue
 
-        print(row)
-        
-        start_time = time.time()
-        count += count_arrangements(row)
-        end_time = time.time()
-        print("Wall clock time taken:", end_time - start_time, "seconds")
-    return count
+            terminators[count].append(spring)
+
+        singles = defaultdict(list)
+        init = defaultdict(int)
+        for count in terminators:
+            for terminator in terminators[count]:
+                single = terminator + '#'
+                count2 = count_contiguous_groups(single)
+
+                if len(count2) == 0 or max(count2) <= max(init_groups):
+                    singles[tuple(count2)].append(single)
+
+                if count2[:-1] == full_groups[0:len(count2)-1]:
+                    init[(tuple(count2), True)] += 1
+
+                single = terminator + '.'
+                count2 = count_contiguous_groups(single)
+
+                if len(count2) == 0 or max(count) <= max(init_groups):
+                    singles[tuple(count2)].append(single)
+
+                if count2 == full_groups[0:len(count2)]:
+                    init[(tuple(count2), False)] += 1
+
+        # return (terminators, singles, init)
+        # 2x
+        init = expand_group(init, singles, full_groups)
+        # 3x
+        init = expand_group(init, singles, full_groups)
+        # 4x
+        init = expand_group(init, singles, full_groups)
+
+        for count in terminators:
+            for terminator in terminators[count]:
+                for count2, last_char_hash in init:
+                    if not last_char_hash or terminator[0] == '.' or len(count) == 0 or len(count2) == 0:
+                        new_count = count2 + count
+                    else:
+                        new_count = count2[:-1] + (count2[-1] + count[0],) + count[1:]
+
+                    if list(new_count) == full_groups:
+                        total += init[(count2, last_char_hash)]
+
+        print(i, total)
+        i += 1
+
+    return total
